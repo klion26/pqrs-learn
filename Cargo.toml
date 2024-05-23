@@ -1,0 +1,13 @@
+[package]
+name = "pqrs-learn"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "1.0.61"
+log = "0.4.21"
+env_logger = "0.11.3"
+parquet = { version = "40.0.0", features = ["cli"] }
+arrow = { version = "40.0.0", features = ["chrono-tz"] }
+clap = "2.33.4"
+rand = "0.8.5"
