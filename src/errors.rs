@@ -20,5 +20,7 @@ pub enum PQRSError {
     #[error("Unable to process file")]
     UnableProcessFile(#[from] io::Error),
     #[error("Unable to read/write arrow data")]
-    ArrowReadWriteError(#[from] ArrowError)
+    ArrowReadWriteError(#[from] ArrowError),
+    #[error("Unsupported operation")]
+    UnsupportedOperation(),
 }

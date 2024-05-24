@@ -2,6 +2,12 @@
 name = "pqrs-learn"
 version = "0.1.0"
 edition = "2021"
+authors = ["klion26"]
+description = "Apache Parquet command-line tools and utilities"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+keywords = ["cli", "arrow", "parquet"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 thiserror = "1.0.61"
@@ -11,3 +17,11 @@ parquet = { version = "40.0.0", features = ["cli"] }
 arrow = { version = "40.0.0", features = ["chrono-tz"] }
 clap = "2.33.4"
 rand = "0.8.5"
+tempfile = "3.10.1"
+walkdir = "2.5.0"
+
+
+[dev-dependencies]
+tempfile = "3.10.1"
+assert_cmd = "2.0.14"
+predicates = "3.1.0"

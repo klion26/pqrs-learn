@@ -1,10 +1,11 @@
-use crate::errors::PQRSError;
-use crate::errors::PQRSError::CouldNotOpenFile;
+use std::fmt::Formatter;
+use crate::errors::PQRSError::{CouldNotOpenFile, UnsupportedOperation};
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use parquet::record::Row;
 use parquet::arrow::{ArrowWriter};
 use arrow::{datatypes::Schema, record_batch::RecordBatch};
 use std::fs::File;
+use std::io::ErrorKind::Unsupported;
 use std::path::Path;
 use log::debug;
 use rand::thread_rng;
@@ -12,6 +13,11 @@ use rand::seq::SliceRandom;
 use std::ops::Add;
 use std::sync::Arc;
 use parquet::arrow::arrow_reader::ArrowReaderBuilder;
+use arrow::csv;
+use tempfile::NamedTempFile;
+use std::io::Read;
+use walkdir::DirEntry;
+use crate::errors::PQRSError;
 
 // can this be implement by enum, then implement format function for enum?
 static ONE_KI_B: i64 = 1024;
@@ -19,6 +25,21 @@ static ONE_MI_B: i64 = ONE_KI_B * 1024;
 static ONE_GI_B: i64 = ONE_MI_B * 1024;
 static ONE_TI_B: i64 = ONE_GI_B * 1024;
 static ONE_PI_B: i64 = ONE_TI_B * 1024;
+
+// output formats supported. Only cat command support CSV format.
+#[derive(Debug)]
+pub enum Formats {
+    Default,
+    Csv,
+    Json,
+}
+
+impl std::fmt::Display for Formats {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:?}", self)
+    }
+}
+
 
 /// check if a particular path is present on the filesystem
 pub fn check_path_present(file_path: &str) -> bool {
@@ -35,31 +56,82 @@ pub fn open_file(file_name: &str) -> Result<File, PQRSError> {
     Ok(file)
 }
 
-pub fn print_rows(file: File, num_records: Option<i64>, json: bool) -> Result<(), PQRSError> {
-    let parquet_reader = SerializedFileReader::new(file)?;
-    let mut iter = parquet_reader.get_row_iter(None)?;
+pub fn print_rows(
+    file: File,
+    num_records: Option<i64>,
+    format: &Formats) -> Result<(), PQRSError> {
+    match format {
+        Formats::Default | Formats::Json => {
+            let parquet_reader = SerializedFileReader::new(file)?;
+            let mut iter = parquet_reader.get_row_iter(None)?;
 
-    let mut start: i64 = 0;
-    let end : i64 = num_records.unwrap_or(0);
-    let all_records = num_records.is_none();
+            let mut start: i64 = 0;
+            let end: i64 = num_records.unwrap_or(0);
+            let all_records = num_records.is_none();
 
-    while all_records || start < end {
-        match iter.next() {
-            Some(row) => print_row(&row, json),
-            None => break,
+            while all_records || start < end {
+                match iter.next() {
+                    Some(row) => print_row(&row, format),
+                    None => break,
+                }
+
+                start += 1;
+            }
         }
-
-        start += 1;
+        Formats::Csv => {
+            if num_records.is_some() {
+                return Err(UnsupportedOperation())
+            } else {
+                let output = print_csv(file);
+                if output.is_err() {
+                    println!("{:?}", output);
+                }
+            }
+        }
     }
 
     Ok(())
 }
 
-fn print_row(row: &Row, use_json: bool) {
-    if use_json {
-        println!("{}", row.to_json_value());
+
+pub fn print_csv(
+    file: File
+) -> Result<(), PQRSError> {
+    let data = get_row_batches(file)?;
+    let output = NamedTempFile::new()?;
+
+    let mut writer = csv::Writer::new(&output);
+    for batch in &data.batches {
+        writer.write(batch)?;
+    }
+
+    let mut buf = String::new();
+    let mut resutl = output.reopen()?;
+    resutl.read_to_string(&mut buf)?;
+
+    if buf.len() == 0 {
+        println!("Empty.");
     } else {
-        println!("{}", row.to_string());
+        println!("{}", buf);
+    }
+
+    Ok(())
+}
+// check if the given entry in the walking tree is a hidden file
+pub fn is_hidden(entry: &DirEntry) -> bool {
+    entry.file_name()
+        .to_str()
+        .map(|s| s.starts_with("."))
+        .unwrap_or(false)
+}
+
+fn print_row(
+    row: &Row,
+    format: &Formats) {
+    match format {
+        Formats::Json => println!("{}", row.to_json_value()),
+        Formats::Default => println!("{}", row.to_string()),
+        Formats::Csv => println!("Unsupported! {}", row.to_string()),
     }
 }
 
@@ -114,7 +186,7 @@ pub fn get_pretty_size(bytes: i64) -> String {
 pub fn print_rows_random(
     file: File,
     sample_size: i64,
-    json: bool
+    format: &Formats
 ) -> Result<(), PQRSError> {
     let parquet_reader = SerializedFileReader::new(file.try_clone()?)?;
     let mut iter = parquet_reader.get_row_iter(None)?;
@@ -135,7 +207,7 @@ pub fn print_rows_random(
     let mut start: i64 = 0;
     while let Some(row) = iter.next() {
         if indexes.contains(&start) {
-            print_row(&row, json)
+            print_row(&row, format)
         }
         start += 1;
     }

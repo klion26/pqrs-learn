@@ -4,13 +4,13 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use log::debug;
 use crate::errors::PQRSError;
 use crate::errors::PQRSError::FileNotFound;
-use crate::utils::{check_path_present, open_file, print_rows};
+use crate::utils::{check_path_present, Formats, open_file, print_rows};
 use crate::command::PQRSCommand;
 
 pub struct HeadCommand<'a> {
     file_name: &'a str,
     num_records: i64,
-    use_json: bool
+    format: &'a Formats,
 }
 
 impl<'a> HeadCommand<'a> {
@@ -47,7 +47,11 @@ impl<'a> HeadCommand<'a> {
         Self {
             file_name: matchers.value_of("file").unwrap(),
             num_records: matchers.value_of("records").unwrap().parse().unwrap(),
-            use_json: matchers.is_present("json"),
+            format: if matchers.is_present("json") {
+                &Formats::Json
+            } else {
+                &Formats::Default
+            }
         }
     }
 }
@@ -62,7 +66,7 @@ impl<'a> PQRSCommand for HeadCommand<'a> {
         }
 
         let file = open_file(self.file_name)?;
-        print_rows(file, Some(self.num_records), self.use_json)
+        print_rows(file, Some(self.num_records), self.format)
     }
 }
 
@@ -70,7 +74,7 @@ impl<'a> fmt::Debug for HeadCommand<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln!(f, "The file name to read is: {}", self.file_name);
         writeln!(f, "Number of records to print is: {}", self.num_records);
-        writeln!(f, "Use JSON Output format: {}", self.use_json);
+        writeln!(f, "output format: {}", self.format);
         Ok(())
     }
 }
