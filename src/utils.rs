@@ -6,7 +6,7 @@ use parquet::arrow::{ArrowWriter};
 use arrow::{datatypes::Schema, record_batch::RecordBatch};
 use std::fs::File;
 use std::io::ErrorKind::Unsupported;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use log::debug;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
@@ -27,7 +27,7 @@ static ONE_TI_B: i64 = ONE_GI_B * 1024;
 static ONE_PI_B: i64 = ONE_TI_B * 1024;
 
 // output formats supported. Only cat command support CSV format.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Formats {
     Default,
     Csv,
@@ -41,15 +41,21 @@ impl std::fmt::Display for Formats {
 }
 
 
-/// check if a particular path is present on the filesystem
-pub fn check_path_present(file_path: &str) -> bool {
-    Path::new(file_path).exists()
+// /// check if a particular path is present on the filesystem
+// pub fn check_path_present<P: AsRef<Path>>(file_path: P) -> bool {
+//     Path::new(file_path.as_ref()).exists()
+// }
+
+/// Check if a particular path is present on the filesystem
+pub fn check_path_present<P: AsRef<Path>>(file_path: P) -> bool {
+    Path::new(file_path.as_ref()).exists()
 }
 
-pub fn open_file(file_name: &str) -> Result<File, PQRSError> {
+pub fn open_file<P: AsRef<Path>>(file_name: P) -> Result<File, PQRSError> {
+    let file_name = file_name.as_ref();
     let path = Path::new(&file_name);
     let file = match File::open(&path) {
-        Err(_) => return Err(CouldNotOpenFile(file_name.to_string())),
+        Err(_) => return Err(CouldNotOpenFile(file_name.to_path_buf())),
         Ok(f) => f
     };
 
@@ -58,15 +64,15 @@ pub fn open_file(file_name: &str) -> Result<File, PQRSError> {
 
 pub fn print_rows(
     file: File,
-    num_records: Option<i64>,
-    format: &Formats) -> Result<(), PQRSError> {
+    num_records: Option<usize>,
+    format: Formats) -> Result<(), PQRSError> {
     match format {
         Formats::Default | Formats::Json => {
             let parquet_reader = SerializedFileReader::new(file)?;
             let mut iter = parquet_reader.get_row_iter(None)?;
 
-            let mut start: i64 = 0;
-            let end: i64 = num_records.unwrap_or(0);
+            let mut start: usize = 0;
+            let end: usize = num_records.unwrap_or(0);
             let all_records = num_records.is_none();
 
             while all_records || start < end {
@@ -121,13 +127,13 @@ pub fn print_csv(
 pub fn is_hidden(entry: &DirEntry) -> bool {
     entry.file_name()
         .to_str()
-        .map(|s| s.starts_with("."))
+        .map(|s| s.starts_with('.'))
         .unwrap_or(false)
 }
 
 fn print_row(
     row: &Row,
-    format: &Formats) {
+    format: Formats) {
     match format {
         Formats::Json => println!("{}", row.to_json_value()),
         Formats::Default => println!("{}", row.to_string()),
@@ -185,8 +191,8 @@ pub fn get_pretty_size(bytes: i64) -> String {
 
 pub fn print_rows_random(
     file: File,
-    sample_size: i64,
-    format: &Formats
+    sample_size: usize,
+    format: Formats
 ) -> Result<(), PQRSError> {
     let parquet_reader = SerializedFileReader::new(file.try_clone()?)?;
     let mut iter = parquet_reader.get_row_iter(None)?;
@@ -261,7 +267,7 @@ pub fn get_row_batches(input: File) -> Result<ParquetData, PQRSError> {
     })
 }
 
-pub fn write_parquet(data: ParquetData, output: &str) -> Result<(), PQRSError> {
+pub fn write_parquet<P: AsRef<Path>>(data: ParquetData, output: P) -> Result<(), PQRSError> {
     let file = File::create(output)?;
     let fields = data.schema.fields().to_vec();
     let schema_without_metadata = Schema::new(fields);
@@ -269,7 +275,7 @@ pub fn write_parquet(data: ParquetData, output: &str) -> Result<(), PQRSError> {
     let mut writer = ArrowWriter::try_new(file, Arc::new(schema_without_metadata), None)?;
 
     for record_batch in data.batches.iter() {
-        writer.write(&record_batch)?;
+        writer.write(record_batch)?;
     }
 
     writer.close()?;
