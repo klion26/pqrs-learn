@@ -27,6 +27,7 @@ struct Args {
     #[clap(subcommand)]
     command: Commands
 }
+
 fn main() -> Result<(), PQRSError> {
 
     let args = Args::parse();

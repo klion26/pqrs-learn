@@ -4,6 +4,9 @@ use std::num::ParseIntError;
 use std::path::PathBuf;
 use thiserror::Error;
 use arrow::error::ArrowError;
+use serde_json::Error as SerdeJsonError;
+use std::string::FromUtf8Error;
+use std::io::{BufWriter, IntoInnerError};
 
 #[allow(dead_code)]
 #[derive(Error, Debug)]
@@ -24,4 +27,10 @@ pub enum PQRSError {
     ArrowReadWriteError(#[from] ArrowError),
     #[error("Unsupported operation")]
     UnsupportedOperation(),
+    #[error("Could not convert to/from json")]
+    SerdeJsonError(#[from] SerdeJsonError),
+    #[error("Could not create string from UTF8 bytes")]
+    UTF8ConvertError(#[from] FromUtf8Error),
+    #[error("Could not read/write to buffer")]
+    BufferWriteError(#[from] IntoInnerError<BufWriter<Vec<u8>>>)
 }

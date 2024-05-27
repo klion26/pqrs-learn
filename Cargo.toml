@@ -1,6 +1,6 @@
 [package]
 name = "pqrs-learn"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["klion26"]
 description = "Apache Parquet command-line tools and utilities"
@@ -19,7 +19,9 @@ clap = { version = "4.5.4", features = ["derive"] }
 rand = "0.8.5"
 tempfile = "3.10.1"
 walkdir = "2.5.0"
-
+serde = {  version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+linked_hash_set = "0.1.4"
 
 [dev-dependencies]
 tempfile = "3.10.1"

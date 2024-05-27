@@ -9,12 +9,15 @@ use walkdir::WalkDir;
 use std::collections::HashSet;
 use std::fs::metadata;
 use std::path::PathBuf;
+use linked_hash_set::LinkedHashSet;
 use crate::utils::Formats;
 
 #[derive(Parser, Debug)]
 pub struct CatCommandArgs {
     #[clap(short, long, conflicts_with = "json")]
     csv: bool,
+    #[clap(long = "no-header", requires = "csv", conflicts_with = "json")]
+    csv_no_header: bool,
     #[clap(short, long, conflicts_with = "csv")]
     json: bool,
     locations: Vec<PathBuf>,
@@ -25,6 +28,8 @@ pub(crate) fn execute(opts: CatCommandArgs) -> Result<(), PQRSError> {
         Formats::Json
     } else if opts.csv {
         Formats::Csv
+    } else if opts.csv_no_header {
+        Formats::CsvNoHeader
     } else {
         Formats::Default
     };
@@ -32,7 +37,7 @@ pub(crate) fn execute(opts: CatCommandArgs) -> Result<(), PQRSError> {
     debug!("The location to read from are: {:?} using output format: {:?}", &opts.locations, format);
 
     let mut directories = vec![];
-    let mut files = HashSet::new();
+    let mut files = LinkedHashSet::new();
     for location in &opts.locations {
         let meta = metadata(location).unwrap();
         if meta.is_dir() {

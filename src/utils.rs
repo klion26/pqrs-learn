@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::Formatter;
 use crate::errors::PQRSError::{CouldNotOpenFile, UnsupportedOperation};
 use parquet::file::reader::{FileReader, SerializedFileReader};
@@ -5,6 +6,7 @@ use parquet::record::Row;
 use parquet::arrow::{ArrowWriter};
 use arrow::{datatypes::Schema, record_batch::RecordBatch};
 use std::fs::File;
+use std::hash::Hash;
 use std::io::ErrorKind::Unsupported;
 use std::path::{Path, PathBuf};
 use log::debug;
@@ -31,6 +33,7 @@ static ONE_PI_B: i64 = ONE_TI_B * 1024;
 pub enum Formats {
     Default,
     Csv,
+    CsvNoHeader,
     Json,
 }
 
@@ -66,6 +69,9 @@ pub fn print_rows(
     file: File,
     num_records: Option<usize>,
     format: Formats) -> Result<(), PQRSError> {
+
+    let mut left = num_records;
+
     match format {
         Formats::Default | Formats::Json => {
             let parquet_reader = SerializedFileReader::new(file)?;
@@ -92,6 +98,31 @@ pub fn print_rows(
                 if output.is_err() {
                     println!("{:?}", output);
                 }
+            }
+        }
+        Formats::CsvNoHeader => {
+            let arrow_reader = ArrowReaderBuilder::try_new(file)?;
+            let batch_reader = arrow_reader.with_batch_size(8192).build()?;
+            let writer_builder = arrow::csv::WriterBuilder::new().has_headers(false);
+            let mut writer = writer_builder.build(std::io::stdout());
+
+            for may_batch in batch_reader {
+                if left == Some(0) {
+                    break;
+                }
+
+                let mut batch = may_batch?;
+                if let Some(l) = left {
+                    if batch.num_rows() <= l {
+                        left = Some(l - batch.num_rows());
+                    } else {
+                        let n = min(batch.num_rows(), l);
+                        batch = batch.slice(0, n);
+                        left = Some(0);
+                    }
+                };
+
+                writer.write(&batch)?;
             }
         }
     }
@@ -138,6 +169,7 @@ fn print_row(
         Formats::Json => println!("{}", row.to_json_value()),
         Formats::Default => println!("{}", row.to_string()),
         Formats::Csv => println!("Unsupported! {}", row.to_string()),
+        Formats::CsvNoHeader => println!("Unsupported! {}.", row.to_string()),
     }
 }
 
