@@ -26,10 +26,10 @@ pub struct CatCommandArgs {
 pub(crate) fn execute(opts: CatCommandArgs) -> Result<(), PQRSError> {
     let format = if opts.json {
         Formats::Json
-    } else if opts.csv {
-        Formats::Csv
     } else if opts.csv_no_header {
         Formats::CsvNoHeader
+    } else if opts.csv {
+        Formats::Csv
     } else {
         Formats::Default
     };

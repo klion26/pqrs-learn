@@ -10,11 +10,10 @@ use crate::utils::{check_path_present, Formats, open_file, print_rows_random};
 // prints a random sample of records from the parquet file
 #[derive(Parser, Debug)]
 pub struct SampleCommandArgs {
-    #[arg(short, long)]
     file: PathBuf,
 
     #[arg(short = 'n', long)]
-    num_records: usize,
+    records: usize,
 
     #[arg(short, long)]
     json: bool,
@@ -28,7 +27,7 @@ pub fn execute(opts: SampleCommandArgs) -> Result<(), PQRSError> {
     };
 
     debug!("The file name to read is :{}", opts.file.display());
-    debug!("Number of records to print: {}", opts.num_records);
+    debug!("Number of records to print: {}", opts.records);
     debug!("Output format :{}", format);
 
     if !check_path_present(&opts.file) {
@@ -36,7 +35,7 @@ pub fn execute(opts: SampleCommandArgs) -> Result<(), PQRSError> {
     }
 
     let file = open_file(&opts.file)?;
-    print_rows_random(file, opts.num_records, format)?;
+    print_rows_random(file, opts.records, format)?;
 
     Ok(())
 }

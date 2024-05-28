@@ -1,41 +1,44 @@
-static CITIES_PARQUET_PATH: &'static str = "data/cities.parquet";
-static PEMS_1_PARQUET_PATH: &'static str = "data/pems-1.snappy.parquet";
-static PEMS_2_PARQUET_PATH: &'static str = "data/pems-2.snappy.parquet";
-static MERGED_FILE_NAME: &'static str = "merged.snappy.parquet";
-static CAT_OUTPUT: &'static str = r#"{continent: "Europe", country: {name: "France", city: ["paris", "Nice", "Marseilles", Cannes"]}}
-{continent: "Europe:, country: {name: "Greece", city: ["Athens", "Piraeus", "Hania", Heraklion", Rethymnon"", "Fira"]}}
-{continent: "North America", country: {name: "Canada", city:[ "Tornoto", "Vancouver", "St. John's", "Saint John", "Montreal", "Halifax", "Winnipeg", "Calgary", "Saskatoon", "Ottawa", "Yellowknife"]}}
+static SIMPLE_PARQUET_PATH: &str = "data/simple.parquet";
+static CITIES_PARQUET_PATH: &str = "data/cities.parquet";
+static PEMS_1_PARQUET_PATH: &str = "data/pems-1.snappy.parquet";
+static PEMS_2_PARQUET_PATH: &str = "data/pems-2.snappy.parquet";
+static MERGED_FILE_NAME: &str = "merged.snappy.parquet";
+static CAT_OUTPUT: &str = r#"{continent: "Europe", country: {name: "France", city: ["Paris", "Nice", "Marseilles", "Cannes"]}}
+{continent: "Europe", country: {name: "Greece", city: ["Athens", "Piraeus", "Hania", "Heraklion", "Rethymnon", "Fira"]}}
+{continent: "North America", country: {name: "Canada", city: ["Toronto", "Vancouver", "St. John's", "Saint John", "Montreal", "Halifax", "Winnipeg", "Calgary", "Saskatoon", "Ottawa", "Yellowknife"]}}
 "#;
 static CAT_JSON_OUTPUT: &str = r#"{"continent":"Europe","country":{"city":["Paris","Nice","Marseilles","Cannes"],"name":"France"}}
 {"continent":"Europe","country":{"city":["Athens","Piraeus","Hania","Heraklion","Rethymnon","Fira"],"name":"Greece"}}
 {"continent":"North America","country":{"city":["Toronto","Vancouver","St. John's","Saint John","Montreal","Halifax","Winnipeg","Calgary","Saskatoon","Ottawa","Yellowknife"],"name":"Canada"}}
 "#;
-static SCHEMA_OUTPUT: &'static str = r#"message hive_schema {
-   OPTIONAL BYTE_ARRAY continent (UTF8);
-   OPTIONAL group country {
-     OPTIONAL BYTE_ARRAY name (UTF8);
-     OPTIONAL group city (LIST) {
-       REPEATED group bag {
-         OPTIONAL BYTE_ARRAY array_element (UTF8);
-       }
-     }
-   }
+static CAT_CSV_OUTPUT: &str = r#"foo,bar
+1,2
+10,20"#;
+static CAT_CSV_NO_HEADER_OUTPUT: &str = r#"1,2
+10,20"#;
+static SCHEMA_OUTPUT: &str = r#"message hive_schema {
+  OPTIONAL BYTE_ARRAY continent (UTF8);
+  OPTIONAL group country {
+    OPTIONAL BYTE_ARRAY name (UTF8);
+    OPTIONAL group city (LIST) {
+      REPEATED group bag {
+        OPTIONAL BYTE_ARRAY array_element (UTF8);
+      }
+    }
+  }
 }"#;
-static SAMPLE_PARTIAL_OUTPUT_1: &'static str = "{continent:";
-static SAMPLE_PARTIAL_OUTPUT_2: &'static str = "country: {name:";
+static SAMPLE_PARTIAL_OUTPUT_1: &str = "{continent:";
+static SAMPLE_PARTIAL_OUTPUT_2: &str = "country: {name:";
 
 mod integration {
-    use crate:: {
-        CAT_JSON_OUTPUT, CAT_OUTPUT, CITIES_PARQUET_PATH, MERGED_FILE_NAME,
-        PEMS_1_PARQUET_PATH, PEMS_2_PARQUET_PATH, SAMPLE_PARTIAL_OUTPUT_1,
-        SAMPLE_PARTIAL_OUTPUT_2, SCHEMA_OUTPUT,
-    };
+    use crate::{CAT_CSV_NO_HEADER_OUTPUT, CAT_JSON_OUTPUT, CAT_OUTPUT, CITIES_PARQUET_PATH, MERGED_FILE_NAME, PEMS_1_PARQUET_PATH, PEMS_2_PARQUET_PATH, SAMPLE_PARTIAL_OUTPUT_1, SAMPLE_PARTIAL_OUTPUT_2, SCHEMA_OUTPUT, SIMPLE_PARQUET_PATH};
     use assert_cmd::Command;
+    use clap::{arg, command};
     use predicates::prelude::*;
     use tempfile::tempdir;
 
     #[test]
-    fn validate_cata() -> Result<(), Box<dyn std::error::Error>> {
+    fn validate_cat() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = Command::cargo_bin("pqrs-learn")?;
         cmd.arg("cat").arg(CITIES_PARQUET_PATH);
         cmd.assert()
@@ -44,4 +47,194 @@ mod integration {
 
         Ok(())
     }
+
+    #[test]
+    fn validate_cata_json() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("cat")
+            .arg(CITIES_PARQUET_PATH)
+            .arg("--json");
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains(CAT_JSON_OUTPUT));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_cat_csv_no_header() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("cat")
+            .arg(SIMPLE_PARQUET_PATH)
+            .arg("--csv")
+            .arg("--no-header");
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::starts_with(CAT_CSV_NO_HEADER_OUTPUT));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_cat_directory() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("cat")
+            .arg("data");
+        cmd.assert().success().stderr(
+            predicate::str::contains("simple.parquet").and(
+                predicate::str::contains("pems-1.snappy.parquet")
+                    .and(predicate::str::contains("pems-2.snappy.parquet")),
+            ),
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_head() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        let lines: Vec<&str> = CAT_OUTPUT.split("\n").collect();
+        cmd.arg("head")
+            .arg(CITIES_PARQUET_PATH)
+            .arg("-n")
+            .arg("1");
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains(lines[0]));
+        Ok(())
+    }
+
+    #[test]
+    fn validate_merge() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        let dir = tempdir()?;
+        let file_path = dir.path().join(MERGED_FILE_NAME);
+        let file_name = file_path.to_str().unwrap();
+        cmd.arg("merge")
+            .arg("--input")
+            .arg(PEMS_1_PARQUET_PATH)
+            .arg(PEMS_2_PARQUET_PATH)
+            .arg("--output")
+            .arg(file_name);
+        cmd.assert().success();
+
+        let mut rowcount_cmd = Command::cargo_bin("pqrs-learn")?;
+        rowcount_cmd.arg("rowcount").arg(file_name);
+        rowcount_cmd
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("5573 rows"));
+
+        dir.close()?;
+        Ok(())
+    }
+
+    #[test]
+    fn validate_rowcount() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("rowcount").arg(CITIES_PARQUET_PATH);
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains("3 rows"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_sample() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+
+        cmd.arg("sample")
+            .arg(CITIES_PARQUET_PATH)
+            .arg("--records")
+            .arg("1");
+
+        cmd.assert().success().stdout(
+            predicate::str::contains(SAMPLE_PARTIAL_OUTPUT_2)
+                .and(predicate::str::starts_with(SAMPLE_PARTIAL_OUTPUT_1)));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_schema() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("schema").arg(CITIES_PARQUET_PATH);
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains(SCHEMA_OUTPUT));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_schema_json() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("schema")
+            .arg("--json")
+            .arg(CITIES_PARQUET_PATH);
+
+        cmd.assert()
+            .success()
+            .stdout(
+                predicate::str::contains("version").and(
+                    predicate::str::contains("num_rows")
+                        .and(predicate::str::contains("created_by"))
+                        .and(predicate::str::contains("message")),
+                )
+            );
+        Ok(())
+    }
+
+    #[test]
+    fn validate_uncompressed_size() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("size").arg(PEMS_1_PARQUET_PATH);
+        cmd.assert().success()
+            .stdout(predicate::str::contains("Uncompressed size: 63085"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_uncompressed_size_pretty() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+
+        cmd.arg("size")
+            .arg(PEMS_1_PARQUET_PATH)
+            .arg("--pretty");
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains("Uncompressed size: 61 KiB"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_compressed_size() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("size")
+            .arg(PEMS_1_PARQUET_PATH)
+            .arg("--compressed");
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains("compressed size: 13067"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn validate_compressed_size_pretty() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("size")
+            .arg(PEMS_1_PARQUET_PATH)
+            .arg("--compressed")
+            .arg("--pretty");
+        cmd.assert()
+            .success()
+            .stdout(predicate::str::contains("compressed size: 12 KiB"));
+
+        Ok(())
+    }
+
 }
