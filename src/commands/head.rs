@@ -1,8 +1,10 @@
 use std::fmt;
 use std::fmt::Formatter;
 use std::path::PathBuf;
+
 use clap::{Arg, ArgMatches, Parser};
 use log::debug;
+
 use crate::errors::PQRSError;
 use crate::errors::PQRSError::FileNotFound;
 use crate::utils::{check_path_present, Formats, open_file, print_rows};

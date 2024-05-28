@@ -1,24 +1,26 @@
 use std::cmp::min;
 use std::fmt::Formatter;
-use crate::errors::PQRSError::{CouldNotOpenFile, UnsupportedOperation};
-use parquet::file::reader::{FileReader, SerializedFileReader};
-use parquet::record::Row;
-use parquet::arrow::{ArrowWriter};
-use arrow::{datatypes::Schema, record_batch::RecordBatch};
 use std::fs::File;
 use std::hash::Hash;
 use std::io::ErrorKind::Unsupported;
-use std::path::{Path, PathBuf};
-use log::debug;
-use rand::thread_rng;
-use rand::seq::SliceRandom;
-use std::ops::Add;
-use std::sync::Arc;
-use parquet::arrow::arrow_reader::ArrowReaderBuilder;
-use arrow::csv;
-use tempfile::NamedTempFile;
 use std::io::Read;
+use std::ops::Add;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use arrow::{datatypes::Schema, record_batch::RecordBatch};
+use arrow::csv;
+use log::debug;
+use parquet::arrow::arrow_reader::ArrowReaderBuilder;
+use parquet::arrow::ArrowWriter;
+use parquet::file::reader::{FileReader, SerializedFileReader};
+use parquet::record::Row;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use tempfile::NamedTempFile;
 use walkdir::DirEntry;
+
+use crate::errors::PQRSError::{CouldNotOpenFile, UnsupportedOperation};
 use crate::errors::PQRSError;
 
 // can this be implement by enum, then implement format function for enum?
@@ -297,19 +299,4 @@ pub fn get_row_batches(input: File) -> Result<ParquetData, PQRSError> {
         batches,
         rows
     })
-}
-
-pub fn write_parquet<P: AsRef<Path>>(data: ParquetData, output: P) -> Result<(), PQRSError> {
-    let file = File::create(output)?;
-    let fields = data.schema.fields().to_vec();
-    let schema_without_metadata = Schema::new(fields);
-
-    let mut writer = ArrowWriter::try_new(file, Arc::new(schema_without_metadata), None)?;
-
-    for record_batch in data.batches.iter() {
-        writer.write(record_batch)?;
-    }
-
-    writer.close()?;
-    Ok(())
 }

@@ -1,15 +1,16 @@
+use std::collections::HashSet;
+use std::fmt;
+use std::fs::metadata;
+use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Parser};
+use linked_hash_set::LinkedHashSet;
 use log::debug;
+use walkdir::WalkDir;
+
 use crate::errors::PQRSError;
 use crate::errors::PQRSError::FileNotFound;
 use crate::utils::{check_path_present, is_hidden, open_file, print_rows};
-use std::fmt;
-use walkdir::WalkDir;
-use std::collections::HashSet;
-use std::fs::metadata;
-use std::path::PathBuf;
-use linked_hash_set::LinkedHashSet;
 use crate::utils::Formats;
 
 #[derive(Parser, Debug)]

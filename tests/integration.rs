@@ -33,7 +33,7 @@ static SAMPLE_PARTIAL_OUTPUT_2: &str = "country: {name:";
 mod integration {
     use crate::{CAT_CSV_NO_HEADER_OUTPUT, CAT_JSON_OUTPUT, CAT_OUTPUT, CITIES_PARQUET_PATH, MERGED_FILE_NAME, PEMS_1_PARQUET_PATH, PEMS_2_PARQUET_PATH, SAMPLE_PARTIAL_OUTPUT_1, SAMPLE_PARTIAL_OUTPUT_2, SCHEMA_OUTPUT, SIMPLE_PARQUET_PATH};
     use assert_cmd::Command;
-    use clap::{arg, command};
+    
     use predicates::prelude::*;
     use tempfile::tempdir;
 

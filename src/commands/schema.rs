@@ -4,12 +4,14 @@ use std::fmt::Formatter;
 use std::hash::Hash;
 use std::io::BufWriter;
 use std::path::PathBuf;
+
 use clap::{Arg, ArgMatches, Parser};
 use log::debug;
 use parquet::file::metadata::ParquetMetaData;
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use parquet::schema::printer::{print_file_metadata, print_parquet_metadata, print_schema};
 use serde::{Deserialize, Serialize};
+
 use crate::errors::PQRSError;
 use crate::errors::PQRSError::FileNotFound;
 use crate::utils::{check_path_present, open_file};

@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-
 use env_logger::Env;
+
 use crate::errors::PQRSError;
 
 mod errors;

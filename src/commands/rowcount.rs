@@ -1,12 +1,13 @@
 use std::fmt;
 use std::fmt::Formatter;
 use std::path::PathBuf;
-use clap::{ Arg, ArgMatches, Parser};
+
+use clap::{Arg, ArgMatches, Parser};
 use log::debug;
+
 use crate::errors::PQRSError;
 use crate::errors::PQRSError::FileNotFound;
 use crate::utils::{check_path_present, get_row_count, open_file};
-
 
 #[derive(Parser, Debug)]
 pub struct RowCountCommandArgs {
