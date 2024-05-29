@@ -1,6 +1,6 @@
 name: Release
 
-run-name: Release by @${{ github.actor }} for ${{ inputs.build_id }}
+run-name: Release by @${{ github.actor }} for ${{ github.ref_name }}(${{ github.ref_type }} )
 
 # Build on every semantic versioned tag
 on:
@@ -12,17 +12,28 @@ jobs:
   precheck:
     runs-on: ubuntu-latest
     outputs:
-      VERSION: ${{ steps.vars.outputs.VERSION }}
+      NAME: ${{ env.NAME }}
+      VERSION: ${{ env.VERSION }}
+      DIST_NAME: ${{ env.DIST_NAME }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Version
-        id: vars
+      - name: Get project metadata
+        id: metadata
+        run: |
+          cargo read-manifest -q > metadata.json
+
+      - name: Distributed Name
         shell: bash
         run: |
-          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
-          echo ::set-output name=VERSION::$(echo "$version")
+          name=$(jq -r .name metadata.json)
+          version=$(jq -r .version metadata.json)
+          distName="$name-$version"
+          echo "NAME=$name" >> "$GITHUB_ENV"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "DIST_NAME=$distName" >> "$GITHUB_ENV"
+          echo "$name : $version : $distName"
 
   build:
     name: 'Build ${{ matrix.job.target }}'
@@ -40,7 +51,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Configure the Rust toolchain
       - name: Install Rust toolchain
@@ -60,6 +73,33 @@ jobs:
           rustup default
           cargo -V
           rustc -V
+          echo ${{ needs.precheck.outputs.VERSION }}
+          echo ${{ needs.precheck.outputs.NAME }}
+          echo ${{ needs.precheck.outputs.DIST_NAME }}
+
+      # the below can get metadata for different os and the result will set the env with name DIST_NAME
+#      - name: Get project metadata
+#        id: metadata
+#        run: |
+#          cargo read-manifest -q > metadata.json
+#
+#      - name: Extract distributionName(linux & mac)
+#        if: runner.os == 'Linux' ||  runner.os  == 'macOS'
+#        run: |
+#          echo "DIST_NAME=$(jq -r '.name + "-" + .version' metadata.json)" >> "$GITHUB_ENV"
+#
+#      - name: Extract distributionName(windows)
+#        if: runner.os == 'Windows'
+#        shell: powershell
+#        run: |
+#          $name = (Get-Content -Path Cargo.toml | Select-String -Pattern '^name *=').Line.Split('=')[1].Trim().Trim('"')
+#          $version = (Get-Content -Path Cargo.toml | Select-String -Pattern '^version *=').Line.Split('=')[1].Trim().Trim('"')
+#          $distName = "$name-$version"
+#          echo $distName
+#          echo "DIST_NAME=$distName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+#
+#      - name: Use distributionName
+#        run: echo "Distribution name is ${{ env.DIST_NAME }}"
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -72,7 +112,7 @@ jobs:
       - name: Assemble
         uses: jreleaser/release-action@v2
         with:
-          version: early-access
+          version: 1.12.0
           arguments: assemble
         env:
           JRELEASER_PROJECT_VERSION: ${{ needs.precheck.outputs.VERSION }}
@@ -82,16 +122,17 @@ jobs:
 
       # Upload archive
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           retention-days: 1
-          name: artifacts
+          # name need be the same as the artifacts' path in jreleaser.yml
+          name: ${{ needs.precheck.outputs.DIST_NAME }}-${{ matrix.job.target }}
           path: |
-            out/jreleaser/assemble/pqrs/archive/*.zip
+            out/jreleaser/assemble/pqrs-learn/archive/*.zip
 
       - name: JReleaser output
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jreleaser-output-${{ matrix.job.target }}
           path: |
@@ -104,17 +145,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
 
       - name: Release
         uses: jreleaser/release-action@v2
         with:
-          version: early-access
+          version: 1.12.0
           arguments: full-release -PartifactsDir=artifacts -PskipArchiveResolver
         env:
           JRELEASER_PROJECT_VERSION: ${{ needs.precheck.outputs.VERSION }}
@@ -123,7 +166,7 @@ jobs:
 
       - name: JReleaser output
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: output-release-logs
           path: |
