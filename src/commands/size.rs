@@ -1,8 +1,6 @@
-use std::fmt;
-use std::fmt::Formatter;
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Parser};
+use clap::{Parser};
 use log::debug;
 
 use crate::errors::PQRSError;

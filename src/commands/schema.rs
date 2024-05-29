@@ -1,11 +1,8 @@
 use std::collections::HashMap;
-use std::fmt;
-use std::fmt::Formatter;
-use std::hash::Hash;
 use std::io::BufWriter;
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Parser};
+use clap::{Parser};
 use log::debug;
 use parquet::file::metadata::ParquetMetaData;
 use parquet::file::reader::{FileReader, SerializedFileReader};

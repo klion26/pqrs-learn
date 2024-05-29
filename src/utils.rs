@@ -1,18 +1,14 @@
 use std::cmp::min;
 use std::fmt::Formatter;
 use std::fs::File;
-use std::hash::Hash;
-use std::io::ErrorKind::Unsupported;
 use std::io::Read;
 use std::ops::Add;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::path::{Path};
 
 use arrow::{datatypes::Schema, record_batch::RecordBatch};
 use arrow::csv;
 use log::debug;
 use parquet::arrow::arrow_reader::ArrowReaderBuilder;
-use parquet::arrow::ArrowWriter;
 use parquet::file::reader::{FileReader, SerializedFileReader};
 use parquet::record::Row;
 use rand::seq::SliceRandom;

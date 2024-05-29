@@ -1,9 +1,7 @@
-use std::collections::HashSet;
-use std::fmt;
 use std::fs::metadata;
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Parser};
+use clap::{Parser};
 use linked_hash_set::LinkedHashSet;
 use log::debug;
 use walkdir::WalkDir;
