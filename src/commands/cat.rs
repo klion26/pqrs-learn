@@ -19,6 +19,8 @@ pub struct CatCommandArgs {
     csv_no_header: bool,
     #[clap(short, long, conflicts_with = "csv")]
     json: bool,
+    #[clap(short, long)]
+    quiet: bool,
     locations: Vec<PathBuf>,
 }
 
@@ -72,11 +74,14 @@ pub(crate) fn execute(opts: CatCommandArgs) -> Result<(), PQRSError> {
 
     for file_name in &files {
         let file = open_file(file_name)?;
-        let info_string = format!("File: {}", file_name.display());
-        let length = info_string.len();
-        eprintln!("\n{}", "#".repeat(length));
-        eprintln!("{}", info_string);
-        eprintln!("{}\n", "#".repeat(length));
+
+        if !opts.quiet {
+            let info_string = format!("File: {}", file_name.display());
+            let length = info_string.len();
+            eprintln!("\n{}", "#".repeat(length));
+            eprintln!("{}", info_string);
+            eprintln!("{}\n", "#".repeat(length));
+        }
         print_rows(file, None, format)?;
     }
 

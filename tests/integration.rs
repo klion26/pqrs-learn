@@ -31,7 +31,7 @@ static SAMPLE_PARTIAL_OUTPUT_1: &str = "{continent:";
 static SAMPLE_PARTIAL_OUTPUT_2: &str = "country: {name:";
 
 mod integration {
-    use crate::{CAT_CSV_NO_HEADER_OUTPUT, CAT_JSON_OUTPUT, CAT_OUTPUT, CITIES_PARQUET_PATH, MERGED_FILE_NAME, PEMS_1_PARQUET_PATH, PEMS_2_PARQUET_PATH, SAMPLE_PARTIAL_OUTPUT_1, SAMPLE_PARTIAL_OUTPUT_2, SCHEMA_OUTPUT, SIMPLE_PARQUET_PATH};
+    use crate::{CAT_CSV_NO_HEADER_OUTPUT, CAT_CSV_OUTPUT, CAT_JSON_OUTPUT, CAT_OUTPUT, CITIES_PARQUET_PATH, MERGED_FILE_NAME, PEMS_1_PARQUET_PATH, PEMS_2_PARQUET_PATH, SAMPLE_PARTIAL_OUTPUT_1, SAMPLE_PARTIAL_OUTPUT_2, SCHEMA_OUTPUT, SIMPLE_PARQUET_PATH};
     use assert_cmd::Command;
     
     use predicates::prelude::*;
@@ -62,15 +62,36 @@ mod integration {
     }
 
     #[test]
+    fn validate_cat_json_quiet() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cmd = Command::cargo_bin("pqrs-learn")?;
+        cmd.arg("cat")
+            .arg(CITIES_PARQUET_PATH)
+            .arg("--json")
+            .arg("--quiet");
+
+        cmd.assert()
+            .success()
+            .stdout(
+                predicate::str::contains(CAT_JSON_OUTPUT)
+                // does not contain file name
+                .and(predicate::str::contains(CITIES_PARQUET_PATH).not()));
+
+        Ok(())
+    }
+
+    #[test]
     fn validate_cat_csv_no_header() -> Result<(), Box<dyn std::error::Error>> {
         let mut cmd = Command::cargo_bin("pqrs-learn")?;
         cmd.arg("cat")
             .arg(SIMPLE_PARQUET_PATH)
             .arg("--csv")
-            .arg("--no-header");
+            .arg("--no-header")
+            .arg("--quiet");
         cmd.assert()
             .success()
-            .stdout(predicate::str::starts_with(CAT_CSV_NO_HEADER_OUTPUT));
+            .stdout(
+                predicate::str::starts_with(CAT_CSV_NO_HEADER_OUTPUT)
+                    .and(predicate::str::contains(SIMPLE_PARQUET_PATH).not()));
 
         Ok(())
     }
