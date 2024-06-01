@@ -65,3 +65,17 @@ distributions:
         platform: 'linux-aarch_64'
       - path: '{{artifactsDir}}/{{distributionName}}-{{projectVersion}}-x86_64-pc-windows-msvc/{{distributionName}}-{{projectVersion}}-x86_64-pc-windows-msvc.zip'
         platform: 'windows-x86_64'
+packagers:
+  brew:
+    active: ALWAYS
+    continueOnError: false
+    formulaName: pqrs-learn
+    multiPlatform: true
+    commitAuthor:
+      name: jreleaserbot
+      email: jreleaser@kordamp.org
+    tap:
+      active: ALWAYS
+      owner: klion26
+      name: homebrew-tap
+      username: klion26
