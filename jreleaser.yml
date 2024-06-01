@@ -33,6 +33,7 @@ release:
       preset: conventional-commits
       contributors:
         enabled: true
+        format: '- {{contributorName}}{{#contributorUsernameAsLink}} ({{.}}){{/contributorUsernameAsLink}}'
 
 assemble:
   archive:
