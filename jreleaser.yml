@@ -74,8 +74,10 @@ packagers:
     commitAuthor:
       name: jreleaserbot
       email: jreleaser@kordamp.org
-    tap:
+    repository:
       active: ALWAYS
       owner: klion26
       name: homebrew-tap
       username: klion26
+      token: '{{ secrets.HOMEBREW_TOKEN }}'
+      commitMessage: '{{distributionName}} {{tagName}}'
