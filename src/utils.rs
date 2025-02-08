@@ -10,7 +10,7 @@ use arrow::csv;
 use log::debug;
 use parquet::arrow::arrow_reader::ArrowReaderBuilder;
 use parquet::file::reader::{FileReader, SerializedFileReader};
-use parquet::record::{Field, Row, RowAccessor};
+use parquet::record::{Field, Row};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use tempfile::NamedTempFile;

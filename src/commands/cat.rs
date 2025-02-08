@@ -22,7 +22,7 @@ pub struct CatCommandArgs {
     json: bool,
     #[clap(short, long)]
     quiet: bool,
-    #[clap(short, long, default_value = "false", help = "print the timestamp in long value in raw mode")]
+    #[clap(short, long, conflicts_with_all = ["csv", "json"], default_value = "false", help = "print the timestamp in long value in default mode")]
     raw_timestamp: bool,
     locations: Vec<PathBuf>,
 }
