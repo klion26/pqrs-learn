@@ -37,5 +37,5 @@ pub fn execute(opts: HeadCommandArgs) -> Result<(), PQRSError> {
     }
 
     let file = open_file(&opts.file)?;
-    print_rows(file, Some(opts.records), format)
+    print_rows(file, Some(opts.records), format, false)
 }

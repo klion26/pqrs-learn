@@ -10,7 +10,7 @@ use arrow::csv;
 use log::debug;
 use parquet::arrow::arrow_reader::ArrowReaderBuilder;
 use parquet::file::reader::{FileReader, SerializedFileReader};
-use parquet::record::Row;
+use parquet::record::{Field, Row, RowAccessor};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use tempfile::NamedTempFile;
@@ -66,7 +66,8 @@ pub fn open_file<P: AsRef<Path>>(file_name: P) -> Result<File, PQRSError> {
 pub fn print_rows(
     file: File,
     num_records: Option<usize>,
-    format: Formats) -> Result<(), PQRSError> {
+    format: Formats,
+    raw_timestamp: bool) -> Result<(), PQRSError> {
 
     let mut left = num_records;
 
@@ -81,7 +82,7 @@ pub fn print_rows(
 
             while all_records || start < end {
                 match iter.next() {
-                    Some(row) => print_row(&row, format),
+                    Some(row) => print_row(&row, format, raw_timestamp),
                     None => break,
                 }
 
@@ -162,10 +163,29 @@ pub fn is_hidden(entry: &DirEntry) -> bool {
 
 fn print_row(
     row: &Row,
-    format: Formats) {
+    format: Formats,
+    raw_timestamp: bool) {
     match format {
         Formats::Json => println!("{}", row.to_json_value()),
-        Formats::Default => println!("{}", row.to_string()),
+        Formats::Default => {
+            if raw_timestamp {
+                print!("{{");
+                row.get_column_iter().for_each(|(key, field)| {
+                    match field {
+                        Field::TimestampMillis(millis) => {
+                            print!("{:?}: {:?},", key, millis);
+                        }
+                        Field::TimestampMicros(micros) => {
+                            print!("{:?}: {:?},", key, micros);
+                        }
+                        _ => print!("{:?}: {:?},", key, field)
+                    }
+                });
+                print!("}}");
+            } else {
+                println!("{}", row.to_string());
+            }
+        },
         Formats::Csv => println!("Unsupported! {}", row.to_string()),
         Formats::CsvNoHeader => println!("Unsupported! {}.", row.to_string()),
     }
@@ -243,7 +263,7 @@ pub fn print_rows_random(
     let mut start: i64 = 0;
     while let Some(row) = iter.next() {
         if indexes.contains(&start) {
-            print_row(&row, format)
+            print_row(&row, format, false)
         }
         start += 1;
     }

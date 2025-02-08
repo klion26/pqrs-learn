@@ -12,6 +12,7 @@ use crate::utils::{check_path_present, is_hidden, open_file, print_rows};
 use crate::utils::Formats;
 
 #[derive(Parser, Debug)]
+#[command(about = "show the content for the given files", long_about = None)]
 pub struct CatCommandArgs {
     #[clap(short, long, conflicts_with = "json")]
     csv: bool,
@@ -21,6 +22,8 @@ pub struct CatCommandArgs {
     json: bool,
     #[clap(short, long)]
     quiet: bool,
+    #[clap(short, long, default_value = "false", help = "print the timestamp in long value in raw mode")]
+    raw_timestamp: bool,
     locations: Vec<PathBuf>,
 }
 
@@ -82,7 +85,7 @@ pub(crate) fn execute(opts: CatCommandArgs) -> Result<(), PQRSError> {
             eprintln!("{}", info_string);
             eprintln!("{}\n", "#".repeat(length));
         }
-        print_rows(file, None, format)?;
+        print_rows(file, None, format, opts.raw_timestamp)?;
     }
 
     Ok(())
